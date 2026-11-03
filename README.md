@@ -9,8 +9,8 @@ Nexus is an external-PC server platform and player Launchpad for **Space Enginee
 - Expose one shared plugin API for C#, Lua, and JavaScript.
 - Keep SE1 and SE2 integration in separate adapters.
 
-## Repository status
-This branch establishes the first buildable architecture: shared contracts, read-only Steam installation discovery, separate game adapter projects, and a minimal ASP.NET Core host. Actual dedicated-server lifecycle integration, authenticated remote control, server listing, and language runtimes are subsequent milestones. Adapter scaffolds do not claim live game compatibility yet.
+## Current implementation
+The foundation includes shared contracts, read-only Steam installation discovery, separate game adapter projects, and an ASP.NET Core host. The Server Manager milestone adds a persistent local registry for server instances. Dedicated-server lifecycle integration, authenticated remote control, server listing, Launchpad UI, and language runtimes remain future milestones.
 
 ## Requirements
 - .NET 10 SDK
@@ -24,32 +24,28 @@ dotnet build Nexus.sln --configuration Release
 dotnet run --project src/Nexus.Server
 ```
 
-Endpoints:
+## API
 - `GET /health`
 - `GET /api/v1/games/installed`
+- `GET /api/v1/server-instances`
+- `GET /api/v1/server-instances/{id}`
+- `POST /api/v1/server-instances`
+- `DELETE /api/v1/server-instances/{id}`
 
-The detection endpoint reports installations on the machine running the server. Launchpad will use the same detector locally.
+Example registration body:
+```json
+{
+  "name": "My SE1 Roleplay Server",
+  "edition": "SpaceEngineers1",
+  "installationPath": "D:/DedicatedServers/SpaceEngineers",
+  "worldPath": "D:/Nexus/Worlds/MyServer"
+}
+```
 
-## Architecture
-```
-Nexus.Launchpad (Windows)
-       | HTTPS + authenticated connection (planned)
-       v
-Nexus.Server (Windows/Linux)
-  |-- Nexus.Contracts
-  |-- Nexus.GameDetection
-  |-- Nexus.GameAdapters.Abstractions
-  |     |-- Nexus.GameAdapters.SE1
-  |     `-- Nexus.GameAdapters.SE2
-  `-- Nexus.PluginRuntime (planned: C#, Lua, JavaScript)
-```
+The registry is stored under the host user's local application data directory in `Nexus/ServerManager/server-instances.json`. It stores metadata and paths only; it does not copy, modify, or launch game files.
 
 ## Security
-- Do not expose administrative APIs publicly without TLS and authentication.
-- Treat third-party plugins as untrusted code.
-- Do not execute arbitrary shell commands from remote requests.
-- Grant plugins explicit capabilities and isolate runtimes.
-- Keep secrets out of source control.
+Management endpoints are intended for local development only in this milestone. Do not expose them to the public internet. Remote administration must add TLS, authentication, authorization, and audit logging first. Third-party plugin runtimes will require explicit capabilities and isolation.
 
-## Compatibility note
-SE1 and SE2 have distinct game and modding interfaces. Nexus uses separate adapters and will validate each against supported game/server builds before enabling management features.
+## Compatibility
+SE1 and SE2 have distinct game and modding interfaces. Nexus uses separate adapters and will validate each against supported game/server builds before enabling management features. Current adapters validate candidate paths only and do not manage live game servers.
